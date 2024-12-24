@@ -36,4 +36,16 @@ public class UserRepoMappingRepository {
         }
         return Optional.of(result.get(0));
     }
+
+    public void save(UserRepoMapping userRepoMapping) {
+        String sql = """
+                INSERT INTO user_repo_mappings (username, repository_name)
+                VALUES (:username, :repository_name)
+                """;
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("username", userRepoMapping.username())
+                .addValue("repository_name", userRepoMapping.repositoryName());
+
+        namedParameterJdbcTemplate.update(sql, params);
+    }
 }

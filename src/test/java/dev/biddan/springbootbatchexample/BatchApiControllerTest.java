@@ -19,21 +19,23 @@ class BatchApiControllerTest {
     @Autowired
     private MockMvcBuilder mockMvcBuilder;
 
+    @Autowired
+    private UserRepoMappingRepository userRepoMappingRepository;
+
     @DisplayName("매핑된 유저를 찾은 경우, 배치 작업을 실행한다")
     @Test
     void success() throws Exception {
-        String requestJson = """
-                {
-                    "username": "biddan606"
-                }
-                """;
+        UserRepoMapping userRepoMapping1 = saveUserRepoMapping("biddan606", "coding-tests");
+        UserRepoMapping userRepoMapping2 = saveUserRepoMapping("Sonseongoh", "Algorithm");
 
-        MockHttpServletRequestBuilder requestBuilder = post("/batch")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestJson);
-
+        MockHttpServletRequestBuilder requestBuilder1 = generateRequestBuilder(userRepoMapping1.username());
         mockMvcBuilder.build()
-                .perform(requestBuilder)
+                .perform(requestBuilder1)
+                .andExpect(status().isOk());
+
+        MockHttpServletRequestBuilder requestBuilder2 = generateRequestBuilder(userRepoMapping2.username());
+        mockMvcBuilder.build()
+                .perform(requestBuilder2)
                 .andExpect(status().isOk());
     }
 
@@ -41,18 +43,32 @@ class BatchApiControllerTest {
     @Test
     void failed() throws Exception {
         // username이 없는 JSON
-        String requestJson = """
-            {
-              "username": ""
-            }
-            """;
-
-        MockHttpServletRequestBuilder requestBuilder = post("/batch")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestJson);
+        MockHttpServletRequestBuilder requestBuilder = generateRequestBuilder("");
 
         mockMvcBuilder.build()
                 .perform(requestBuilder)
                 .andExpect(status().isNotFound());
+    }
+
+    private static MockHttpServletRequestBuilder generateRequestBuilder(String username) {
+        String requestJson = String.format("""
+                        {
+                            "username": "%s"
+                        }
+                        """, username);
+
+        return post("/batch")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson);
+    }
+
+    private UserRepoMapping saveUserRepoMapping(String username, String repositoryName) {
+        UserRepoMapping userRepoMapping1 = UserRepoMapping.builder()
+                .username(username)
+                .repositoryName(repositoryName)
+                .build();
+
+        userRepoMappingRepository.save(userRepoMapping1);
+        return userRepoMapping1;
     }
 }

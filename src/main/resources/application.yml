@@ -11,3 +11,6 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create
+
+github:
+  oauth-token: ${github_oauth_token}
