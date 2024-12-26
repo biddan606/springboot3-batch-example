@@ -31,11 +31,10 @@ public class CommitAnalysisConfig {
     @Bean
     Step commitAnalysisStep(
             JobRepository jobRepository,
-            PlatformTransactionManager transactionManager,
-            RepoCommitReader reader) {
+            PlatformTransactionManager transactionManager) {
         return new StepBuilder("commitAnalysisStep", jobRepository)
                 .<GHCommit, String>chunk(10, transactionManager)
-                .reader(reader)
+                .reader(repoCommitReader(null, null))
                 .processor(Object::toString)
                 .writer(System.out::println)
                 .build();

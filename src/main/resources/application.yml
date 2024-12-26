@@ -11,6 +11,9 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create
+  batch:
+    job:
+      enabled: false
 
 github:
   oauth-token: ${github_oauth_token}
