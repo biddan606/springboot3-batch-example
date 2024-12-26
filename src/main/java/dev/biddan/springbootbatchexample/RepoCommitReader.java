@@ -11,7 +11,9 @@ import org.springframework.batch.item.NonTransientResourceException;
 import org.springframework.batch.item.ParseException;
 import org.springframework.batch.item.UnexpectedInputException;
 
-public class RepoCommitReader implements ItemStreamReader<RepoCommit> {
+public class RepoCommitReader implements ItemStreamReader<GHCommit> {
+
+    protected static final String CURRENT_INDEX_KEY = "current.index";
 
     private final GHRepository ghRepository;
 
@@ -24,8 +26,6 @@ public class RepoCommitReader implements ItemStreamReader<RepoCommit> {
 
     @Override
     public void open(ExecutionContext executionContext) throws ItemStreamException {
-        ItemStreamReader.super.open(executionContext);
-
         try {
             repoCommits = ghRepository.listCommits()
                     .toList();
@@ -37,17 +37,15 @@ public class RepoCommitReader implements ItemStreamReader<RepoCommit> {
     }
 
     @Override
-    public RepoCommit read() throws Exception, UnexpectedInputException, ParseException, NonTransientResourceException {
-        return null;
+    public GHCommit read() throws Exception, UnexpectedInputException, ParseException, NonTransientResourceException {
+        if (repoCommits == null || index >= repoCommits.size()) {
+            return null;
+        }
+        return repoCommits.get(index++);
     }
 
     @Override
     public void update(ExecutionContext executionContext) throws ItemStreamException {
-        ItemStreamReader.super.update(executionContext);
-    }
-
-    @Override
-    public void close() throws ItemStreamException {
-        ItemStreamReader.super.close();
+        executionContext.putInt(CURRENT_INDEX_KEY, index);
     }
 }

@@ -1,6 +1,7 @@
 package dev.biddan.springbootbatchexample;
 
 import lombok.RequiredArgsConstructor;
+import org.kohsuke.github.GHCommit;
 import org.kohsuke.github.GHRepository;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -30,12 +31,13 @@ public class CommitAnalysisConfig {
     @Bean
     Step commitAnalysisStep(
             JobRepository jobRepository,
-            PlatformTransactionManager transactionManager) {
+            PlatformTransactionManager transactionManager,
+            RepoCommitReader reader) {
         return new StepBuilder("commitAnalysisStep", jobRepository)
-                .<RepoCommit, String>chunk(10, transactionManager)
-                .reader(repoCommitReader(null, null))
-                .processor(commit -> null)
-                .writer(s -> System.out.println("write commit"))
+                .<GHCommit, String>chunk(10, transactionManager)
+                .reader(reader)
+                .processor(Object::toString)
+                .writer(System.out::println)
                 .build();
     }
 
