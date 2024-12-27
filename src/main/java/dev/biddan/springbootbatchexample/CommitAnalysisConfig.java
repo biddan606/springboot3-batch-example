@@ -1,11 +1,11 @@
 package dev.biddan.springbootbatchexample;
 
+import dev.biddan.springbootbatchexample.CommitFileProcessor.CommitFileInfo;
 import lombok.RequiredArgsConstructor;
 import org.kohsuke.github.GHCommit;
 import org.kohsuke.github.GHRepository;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.JobScope;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
@@ -31,21 +31,34 @@ public class CommitAnalysisConfig {
     @Bean
     Step commitAnalysisStep(
             JobRepository jobRepository,
-            PlatformTransactionManager transactionManager) {
+            PlatformTransactionManager transactionManager,
+            RepoCommitReader reader,
+            CommitFileProcessor processor
+            ) {
         return new StepBuilder("commitAnalysisStep", jobRepository)
-                .<GHCommit, String>chunk(10, transactionManager)
-                .reader(repoCommitReader(null, null))
-                .processor(Object::toString)
+                .<GHCommit, CommitFileInfo>chunk(10, transactionManager)
+                .reader(reader)
+                .processor(processor)
                 .writer(System.out::println)
                 .build();
     }
 
     @Bean
     @StepScope
-    RepoCommitReader repoCommitReader(
+    GHRepository ghRepository(
             @Value("#{jobParameters['username']}") String username,
             @Value("#{jobParameters['repositoryName']}") String repositoryName) {
-        GHRepository ghRepository = githubClient.getRepository(username, repositoryName);
+        return githubClient.getRepository(username, repositoryName);
+    }
+
+    @Bean
+    @StepScope
+    RepoCommitReader repoCommitReader(GHRepository ghRepository){
         return new RepoCommitReader(ghRepository);
+    }
+
+    @Bean
+    CommitFileProcessor commitFileProcessor(GHRepository ghRepository) {
+        return new CommitFileProcessor(ghRepository);
     }
 }
