@@ -29,6 +29,7 @@ public class CommitFileProcessor implements ItemProcessor<GHCommit, CommitFileIn
         GHCommit detailedCommit = ghRepository.getCommit(commit.getSHA1());
 
         List<ChangeFileInfo> changedFiles = detailedCommit.listFiles().toList().stream()
+                .filter(file -> file.getFileName().endsWith(".java"))
                 .map(file -> {
                     try {
                         GHContent content = ghRepository.getFileContent(file.getFileName(), detailedCommit.getSHA1());
