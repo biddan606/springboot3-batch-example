@@ -1,6 +1,5 @@
 package dev.biddan.springbootbatchexample;
 
-import dev.biddan.springbootbatchexample.CommitFileProcessor.CommitFileInfo;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -17,18 +16,18 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class CommitFileProcessor implements ItemProcessor<GHCommit, CommitFileInfo> {
+public class CommitFileProcessor implements ItemProcessor<GHCommit, CommitFile> {
 
     private final GHRepository ghRepository;
 
     @Override
-    public CommitFileInfo process(GHCommit commit) throws IOException {
+    public CommitFile process(GHCommit commit) throws IOException {
         if (commit == null) {
             return null;
         }
         GHCommit detailedCommit = ghRepository.getCommit(commit.getSHA1());
 
-        List<ChangeFileInfo> changedFiles = detailedCommit.listFiles().toList().stream()
+        return detailedCommit.listFiles().toList().stream()
                 .filter(file -> file.getFileName().endsWith(".java"))
                 .map(file -> {
                     try {
@@ -38,27 +37,16 @@ public class CommitFileProcessor implements ItemProcessor<GHCommit, CommitFileIn
                                 new InputStreamReader(content.read(), StandardCharsets.UTF_8));
                         String fileContent = reader.lines().collect(Collectors.joining("\n"));
 
-                        return new ChangeFileInfo(file.getFileName(), fileContent);
+                        return CommitFile.builder()
+                                .fileName(file.getFileName())
+                                .fileContent(fileContent)
+                                .username(ghRepository.getOwnerName())
+                                .build();
                     } catch (IOException e) {
                         return null;
                     }
                 })
                 .filter(Objects::nonNull)
-                .toList();
-
-        return new CommitFileInfo(detailedCommit.getSHA1(), changedFiles);
-    }
-
-    public record CommitFileInfo(
-            String sha,
-            List<ChangeFileInfo> changedFiles
-    ) {
-
-    }
-
-    public record ChangeFileInfo(
-            String fileName,
-            String fileContent) {
-
+                .findFirst().orElse(null);
     }
 }

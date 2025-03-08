@@ -1,6 +1,6 @@
 package dev.biddan.springbootbatchexample;
 
-import dev.biddan.springbootbatchexample.CommitFileProcessor.CommitFileInfo;
+import javax.sql.DataSource;
 import lombok.RequiredArgsConstructor;
 import org.kohsuke.github.GHCommit;
 import org.kohsuke.github.GHRepository;
@@ -10,6 +10,9 @@ import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
+import org.springframework.batch.item.database.JdbcBatchItemWriter;
+import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,13 +36,14 @@ public class CommitAnalysisConfig {
             JobRepository jobRepository,
             PlatformTransactionManager transactionManager,
             RepoCommitReader reader,
-            CommitFileProcessor processor
-            ) {
+            CommitFileProcessor processor,
+            JdbcBatchItemWriter<CommitFile> writer
+    ) {
         return new StepBuilder("commitAnalysisStep", jobRepository)
-                .<GHCommit, CommitFileInfo>chunk(10, transactionManager)
+                .<GHCommit, CommitFile>chunk(10, transactionManager)
                 .reader(reader)
                 .processor(processor)
-                .writer(System.out::println)
+                .writer(writer)
                 .build();
     }
 
@@ -53,12 +57,22 @@ public class CommitAnalysisConfig {
 
     @Bean
     @StepScope
-    RepoCommitReader repoCommitReader(GHRepository ghRepository){
+    RepoCommitReader repoCommitReader(GHRepository ghRepository) {
         return new RepoCommitReader(ghRepository);
     }
 
     @Bean
     CommitFileProcessor commitFileProcessor(GHRepository ghRepository) {
         return new CommitFileProcessor(ghRepository);
+    }
+
+    @Bean
+    @StepScope
+    JdbcBatchItemWriter<CommitFile> commitFileItemWriter(DataSource dataSource) {
+        return new JdbcBatchItemWriterBuilder<CommitFile>()
+                .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
+                .sql("INSERT INTO commit_files (file_name, file_content) VALUES (:fileName, :fileContent)")
+                .dataSource(dataSource)
+                .build();
     }
 }
